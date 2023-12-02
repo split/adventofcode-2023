@@ -18,7 +18,7 @@ part2 = ("Part 2: " ++) . show . sum . map (product . fewest)
     fewest (Game _ hands) = Map.unionsWith max hands
 
 possible :: Cubes -> Game -> Bool
-possible bag (Game n hands) = all (all (>= 0) . Map.unionWith (+) bag . Map.map negate) hands
+possible bag (Game n hands) = all (all (>= 0) . Map.unionWith (-) bag) hands
 
 parse :: String -> Game
 parse s = Game (read (last $ words title)) hands

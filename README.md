@@ -1,4 +1,4 @@
-# Advent Of Code 2022
+# Advent Of Code 2023
 
 
 In this repository, you will find my solutions to the Advent of Code puzzles, written in Haskell.
