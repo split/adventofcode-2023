@@ -1,9 +1,10 @@
 module Main where
 
-main = interact (unlines . sequence [part1] . map (map read . words) . lines)
+main = interact (unlines . sequence [part1, part2] . map (map read . words) . lines)
 
-part1 :: [[Int]] -> [Char]
+part1, part2 :: [[Int]] -> [Char]
 part1 = ("Part 1: " ++) . show . sum . map extrapolate
+part2 = ("Part 2: " ++) . show . sum . map (extrapolate . reverse)
 
 extrapolate :: [Int] -> Int
 extrapolate history = let dt = diffs history in 
