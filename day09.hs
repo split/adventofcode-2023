@@ -8,7 +8,7 @@ part2 = ("Part 2: " ++) . show . sum . map (extrapolate . reverse)
 
 extrapolate :: [Int] -> Int
 extrapolate history = let dt = diffs history in 
-  last history + if all (== 0) dt then last dt else extrapolate dt
+  last history + if all (== 0) dt then 0 else extrapolate dt
 
 diffs (x1:x2:xs) = x2 - x1 : diffs (x2:xs)
 diffs _ = []
