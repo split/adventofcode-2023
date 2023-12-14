@@ -18,10 +18,10 @@ summarize rule mirror = mirrorReflection rule (transpose mirror) <|> ((* 100) <$
 smudge = (== 1) . length . filter not
 
 mirrorReflection :: (Eq a) => ([Bool] -> Bool) -> [[a]] -> Maybe Int
-mirrorReflection rule = go 1 []
+mirrorReflection rule = go []
   where
-    go _ _ [] = Nothing
-    go i refl (x : xs)
+    go _ [] = Nothing
+    go refl (x : xs)
       | null xs = Nothing
-      | rule $ zipWith (==) (concat (x : refl)) (concat xs) = return i
-      | otherwise = go (i + 1) (x : refl) xs
+      | rule $ zipWith (==) (concat (x : refl)) (concat xs) = return (length refl + 1)
+      | otherwise = go (x : refl) xs
