@@ -12,23 +12,24 @@ type Lavafall = Map (Int, Int) Int
 
 type State = ((Int, Int), (Int, Int), Int)
 
-main = interact (unlines . sequence [part1] . parseLavafall . lines)
+main = interact (unlines . sequence [part1, part2] . parseLavafall . lines)
 
-part1 = ("Part 1: " ++) . maybe "Not found" show . travel
+part1 = ("Part 1: " ++) . maybe "Not found" show . travel (const (<= 3))
 
-cost :: Lavafall -> Int -> (Int -> Bool) -> State -> (Int, Int) -> Maybe (Int, State)
+part2 = ("Part 2: " ++) . maybe "Not found" show . travel (\n n' -> if n' <= n then n >= 4 else n' <= 10)
+
 cost lavafall heat rule (block, dir, n) dir' = do
   heat' <- lavafall !? block'
-  guard (rule n' && dir' /= opposite dir)
+  guard (rule n n' && dir' /= opposite dir)
   return (heat + heat', (block', dir', n'))
   where
     block' = block `move` dir'
     n' = if dir' == dir then n + 1 else 1
 
-travel :: Lavafall -> Maybe Int
-travel lavafall = dijkstra initialHeap initialDistances
+travel :: (Int -> Int -> Bool) -> Lavafall -> Maybe Int
+travel rule lavafall = dijkstra initialHeap initialDistances
   where
-    start = ((0, 0), (0, 1), 0)
+    start = ((0, 0), (0, 0), 0)
     end = maximum $ M.keys lavafall
     initialHeap = H.fromList [(0, start)]
     initialDistances = M.empty
@@ -39,7 +40,7 @@ travel lavafall = dijkstra initialHeap initialDistances
           if state `M.member` dists
             then dijkstra heap' dists
             else
-              let neighbors = H.fromList $ mapMaybe (cost lavafall heat (<= 3) state) dirs
+              let neighbors = H.fromList $ mapMaybe (cost lavafall heat rule state) dirs
                in dijkstra (heap' <> neighbors) (M.insertWith min state heat dists)
 
 parseLavafall :: [String] -> Lavafall
