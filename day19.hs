@@ -5,10 +5,13 @@
 module Main where
 
 import Control.Applicative ((<|>))
+import Control.Arrow ((&&&))
 import Control.Monad ((>=>))
-import Data.Map (Map, (!?))
+import Data.Bifunctor (bimap, first, second)
+import Data.Either (fromRight)
+import Data.Map (Map, (!), (!?))
 import Data.Map qualified as M
-import Data.Maybe (mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Void (Void)
 import Text.Megaparsec (Parsec, between, many, runParser, sepBy, some, try)
 import Text.Megaparsec.Char (char, eol, lowerChar, string)
@@ -28,10 +31,12 @@ data Mem = Mem
   }
   deriving (Show)
 
-main = interact (unlines . sequence [part1])
+main = interact (unlines . sequence [part1, part2] . fromRight [] . runParser parser "")
 
 -- part1 :: [String] -> [Char]
-part1 = ("Part 1: " ++) . either show (show . sum . mapMaybe (`runOp` [Call "in"])) . runParser parser ""
+part1 = ("Part 1: " ++) . show . sum . mapMaybe (`runOp` [Call "in"])
+
+part2 = ("Part 2: " ++) . show . (`runBounds` [Call "in"]) . workflows . head
 
 runOp :: Mem -> [Op] -> Maybe Int
 runOp mem@Mem {..} = \case
@@ -40,6 +45,31 @@ runOp mem@Mem {..} = \case
   (Call name : _) -> workflows !? name >>= runOp mem
   (Gt var limit op : rest) -> vars !? var >>= \val -> runOp mem (if val > limit then [op] else rest)
   (Lt var limit op : rest) -> vars !? var >>= \val -> runOp mem (if val < limit then [op] else rest)
+
+-- a                                  b
+--         A       >
+-- a               b
+--       R   <
+--           a     b
+--      >
+--           a     b
+
+runBounds :: Map String [Op] -> [Op] -> Int
+runBounds workflows = go $ M.fromList ((,(1, 4000)) <$> "xmas")
+  where
+    go state = \case
+      (Accept : _) -> foldr (\(start, end) sum -> sum * (end - start + 1)) 1 state
+      (Reject : _) -> 0
+      (Call name : _) -> go state (workflows ! name)
+      (Gt var limit op : rest)
+        | fst (state ! var) < limit ->
+            go (M.adjust (first (max (limit + 1))) var state) [op]
+              + go (M.adjust (second (min limit)) var state) rest
+      (Lt var limit op : rest)
+        | limit < snd (state ! var) ->
+            go (M.adjust (second (min (limit - 1))) var state) [op]
+              + go (M.adjust (first (max limit)) var state) rest
+      (_ : rest) -> go state rest
 
 -- Parsing of the input
 type Parser = Parsec Void String
