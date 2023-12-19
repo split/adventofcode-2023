@@ -5,46 +5,32 @@
 module Main where
 
 import Control.Applicative ((<|>))
-import Control.Arrow ((&&&))
-import Control.Monad ((>=>))
-import Data.Bifunctor (bimap, first, second)
+import Data.Bifunctor (first, second)
 import Data.Either (fromRight)
-import Data.Map (Map, (!), (!?))
+import Data.Map (Map, (!))
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Void (Void)
 import Text.Megaparsec (Parsec, between, many, runParser, sepBy, some, try)
 import Text.Megaparsec.Char (char, eol, lowerChar, string)
 import Text.Megaparsec.Char.Lexer (decimal)
 
-data Op
-  = Call String
-  | Gt Char Int Op
-  | Lt Char Int Op
-  | Accept
-  | Reject
-  deriving (Eq, Show)
+data Op = Call String | Gt Char Int Op | Lt Char Int Op | Accept | Reject deriving (Eq, Show)
 
-data Mem = Mem
-  { workflows :: Map String [Op],
-    vars :: Map Char Int
-  }
-  deriving (Show)
+data Mem = Mem {workflows :: Map String [Op], vars :: Map Char Int} deriving (Show)
 
 main = interact (unlines . sequence [part1, part2] . fromRight [] . runParser parser "")
 
--- part1 :: [String] -> [Char]
-part1 = ("Part 1: " ++) . show . sum . mapMaybe (`runOp` [Call "in"])
-
+part1, part2 :: [Mem] -> [Char]
+part1 = ("Part 1: " ++) . show . sum . map (`runOp` [Call "in"])
 part2 = ("Part 2: " ++) . show . (`runBounds` [Call "in"]) . workflows . head
 
-runOp :: Mem -> [Op] -> Maybe Int
+runOp :: Mem -> [Op] -> Int
 runOp mem@Mem {..} = \case
-  (Accept : _) -> return (sum vars)
-  (Reject : _) -> Nothing
-  (Call name : _) -> workflows !? name >>= runOp mem
-  (Gt var limit op : rest) -> vars !? var >>= \val -> runOp mem (if val > limit then [op] else rest)
-  (Lt var limit op : rest) -> vars !? var >>= \val -> runOp mem (if val < limit then [op] else rest)
+  (Accept : _) -> sum vars
+  (Reject : _) -> 0
+  (Call name : _) -> runOp mem (workflows ! name)
+  (Gt var limit op : rest) -> runOp mem (if vars ! var > limit then [op] else rest)
+  (Lt var limit op : rest) -> runOp mem (if vars ! var < limit then [op] else rest)
 
 runBounds :: Map String [Op] -> [Op] -> Int
 runBounds workflows = go $ M.fromList ((,(1, 4000)) <$> "xmas")
