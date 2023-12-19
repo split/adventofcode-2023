@@ -46,30 +46,22 @@ runOp mem@Mem {..} = \case
   (Gt var limit op : rest) -> vars !? var >>= \val -> runOp mem (if val > limit then [op] else rest)
   (Lt var limit op : rest) -> vars !? var >>= \val -> runOp mem (if val < limit then [op] else rest)
 
--- a                                  b
---         A       >
--- a               b
---       R   <
---           a     b
---      >
---           a     b
-
 runBounds :: Map String [Op] -> [Op] -> Int
 runBounds workflows = go $ M.fromList ((,(1, 4000)) <$> "xmas")
   where
     go state = \case
-      (Accept : _) -> foldr (\(start, end) sum -> sum * (end - start + 1)) 1 state
+      (Accept : _) -> product $ succ . uncurry (flip (-)) <$> state
       (Reject : _) -> 0
       (Call name : _) -> go state (workflows ! name)
       (Gt var limit op : rest)
         | fst (state ! var) < limit ->
-            go (M.adjust (first (max (limit + 1))) var state) [op]
-              + go (M.adjust (second (min limit)) var state) rest
+            follow var (first (max (limit + 1))) [op] + follow var (second (min limit)) rest
       (Lt var limit op : rest)
         | limit < snd (state ! var) ->
-            go (M.adjust (second (min (limit - 1))) var state) [op]
-              + go (M.adjust (first (max limit)) var state) rest
+            follow var (second (min (limit - 1))) [op] + follow var (first (max limit)) rest
       (_ : rest) -> go state rest
+      where
+        follow var bound = go (M.adjust bound var state)
 
 -- Parsing of the input
 type Parser = Parsec Void String
