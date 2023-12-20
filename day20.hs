@@ -2,10 +2,13 @@
 
 module Main where
 
-import Data.List (partition)
+import Control.Monad (msum)
+import Data.IntMap qualified as M
+import Data.List (partition, (\\))
 import Data.List.Split (splitOn)
 import Data.Map.Strict (Map, insert, (!?))
 import Data.Map.Strict qualified as Map
+import Data.Maybe (mapMaybe)
 
 data Module
   = Broadcaster [String]
@@ -17,7 +20,7 @@ data Pulse = Pulse Bool String String deriving (Eq)
 
 type Wires = Map String Module
 
-main = interact (unlines . sequence [part1] . parse)
+main = interact (unlines . sequence [part1, part2] . parse)
 
 part1 =
   ("Part 1: " ++)
@@ -27,6 +30,29 @@ part1 =
     . concatMap (map fst)
     . take 1000
     . simulate
+
+part2 = ("Part 2: " ++) . maybe "No example" (show . foldl lcm 1 . map fst) . rxDetector
+
+rxDetector wires = findCycles wires <$> watchlist
+  where
+    -- Find out wires providing signals to rx
+    watchlist = msum [rxInputs mod | mod <- Map.elems wires]
+    rxInputs = \case
+      (Conjunction mem ["rx"]) -> return (Map.keys mem)
+      _ -> Nothing
+
+findCycles wires watchlist =
+  filter (not . null . snd)
+    . zip [1 ..]
+    . allDetected watchlist
+    $ mapMaybe (detectLow . fst) <$> simulate wires
+  where
+    allDetected missing (found : xs)
+      | null $ missing \\ found = [found]
+      | otherwise = found : allDetected (missing \\ found) xs
+    detectLow = \case
+      (Pulse True from _) | from `elem` watchlist -> return from
+      _ -> Nothing
 
 simulate wires =
   let pulses = run [(pressButton, wires)]
