@@ -7,20 +7,33 @@ import Data.Either (isLeft, lefts, rights)
 import Data.List (nub, sortBy, (\\))
 import Data.List.Split (splitOn)
 import Data.Ord (comparing)
+import Data.Set (Set, fromList)
+import Data.Set qualified as Set
 import Debug.Trace (trace)
 
 data V3 = V3 {x :: Int, y :: Int, z :: Int} deriving (Show, Eq)
 
 type Block = (Char, (V3, V3))
 
-main = interact (unlines . sequence [part1] . map return . sortBy (comparing (minZ . snd)) . zipWith parse ['A' ..] . lines)
+main = interact (unlines . sequence [part1, part2] . dropUntilStopped . sortBy (comparing (minZ . snd)) . zipWith parse ['A' ..] . lines)
 
-part1 = ("Part 1: " ++) . show . disintegrated . stopped . last . dropBlocks
+dropUntilStopped = stopped . last . dropBlocks . map return
 
-disintegrated :: [(Block, [Block])] -> Int
+part1 = ("Part 1: " ++) . show . disintegrated
+
+part2 = ("Part 2: " ++) . show . sum . map (length . moving) . ap (map . dropWithout) supporters
+
+dropWithout blocks name = head $ dropBlocks (return . fst <$> filter ((/= name) . fst . fst) blocks)
+
 disintegrated = ap ((-) . length) (length . supporters)
 
 supporters = nub . concat . filter ((== 1) . length) . map (map fst . snd)
+
+supported blocks name = go $ Set.singleton name
+  where
+    go x =
+      let b = fromList . fst . fst <$> filter (any ((== name) . fst) . snd) blocks
+       in foldr ((<>) . go) b b
 
 dropBlocks :: [Either (Block, [Block]) Block] -> [[Either (Block, [Block]) Block]]
 dropBlocks blocks
